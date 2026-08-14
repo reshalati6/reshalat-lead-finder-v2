@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reshalat Lead Finder</title>
+    
+    <!-- Tailwind CSS (Browser CDN) -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Export libraries -->
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style type="text/tailwindcss">
+        @custom-variant dark (&:where(.dark, .dark *));
+        @theme {
+            --color-primary: #3b82f6;
+            --color-primary-hover: #2563eb;
+            --color-accent: #f97316;
+            --color-accent-hover: #ea580c;
+            --color-dark-bg: #0A0A0C;
+            --color-dark-panel: #111114;
+            --color-dark-border: rgba(255, 255, 255, 0.05);
+            --color-light-bg: #0A0A0C;
+            --color-light-panel: #111114;
+            --color-light-border: rgba(255, 255, 255, 0.05);
+            --font-sans: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-sans);
+        }
+
+        /* Custom scrollbar for modern feel */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 4px;
+        }
+
+        /* Ambient Glows */
+        .ambient-glow-blue {
+            box-shadow: 0 0 60px -15px rgba(59, 130, 246, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0A0A0C] text-slate-900 dark:text-slate-200 transition-colors duration-300 min-h-screen flex overflow-hidden">
+
+    <!-- Decorative Background Gradients -->
+    <div class="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div class="fixed bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-orange-500/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
+
+    <!-- Sidebar -->
+    <aside class="w-64 border-r border-slate-200 dark:border-white/5 bg-white dark:bg-[#111114] flex flex-col justify-between z-10 hidden md:flex relative shrink-0">
+        <div>
+            <!-- Logo -->
+            <div class="h-16 flex items-center px-6 border-b border-slate-200 dark:border-white/5">
+                <div class="flex items-center gap-3 text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-500 to-blue-600 flex items-center justify-center"></div>
+                    Reshalat Lead Finder
+                </div>
+            </div>
+
+            <!-- Nav Links -->
+            <nav class="p-4 space-y-1 text-sm font-medium">
+                <button class="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-900 dark:text-white transition-colors cursor-default">
+                    <i data-lucide="search" class="h-5 w-5"></i>
+                    Lead Finder
+                </button>
+                <button onclick="toggleModal('upgradeModal')" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors">
+                    <i data-lucide="zap" class="h-5 w-5 text-orange-400"></i>
+                    Pro Agency
+                </button>
+                <button onclick="openSavedLists()" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors">
+                    <i data-lucide="bookmark" class="h-5 w-5 opacity-60"></i>
+                    Saved Lists
+                </button>
+                <button onclick="toggleModal('settingsModal')" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors">
+                    <i data-lucide="settings" class="h-5 w-5 opacity-60"></i>
+                    Settings
+                </button>
+            </nav>
+        </div>
+
+        <!-- User / Auth Area -->
+        <div class="p-4">
+            <div id="authContainer" class="flex flex-col gap-3">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen relative z-10 overflow-hidden">
+        
+        <!-- Header -->
+        <header class="h-16 border-b border-slate-200 dark:border-white/5 px-6 md:px-8 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-4">
+                <div id="usagePill" class="hidden text-xs font-medium px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                    <span id="usageCount">0</span>/3 Free Searches
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-slate-100 dark:bg-white/5 transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white">
+                    <i id="themeIcon" data-lucide="sun" class="h-5 w-5"></i>
+                </button>
+                <div class="hidden md:block h-4 w-px bg-white/10"></div>
+                <button onclick="toggleModal('settingsModal')" class="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors">Settings</button>
+                <!-- Mobile Menu Button Placeholder -->
+                <button class="md:hidden p-2 rounded-full hover:bg-slate-100 dark:bg-white/5 transition-colors text-slate-600 dark:text-slate-400">
+                    <i data-lucide="menu" class="h-5 w-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8">
+            <div class="max-w-5xl mx-auto space-y-8">
+                
+                <!-- Hero Prompt Area -->
+                <section class="p-0">
+                    <h1 class="text-2xl font-light text-slate-900 dark:text-white mb-6">Find your next <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-orange-400 font-medium">high-value lead.</span></h1>
+                    
+                    <div class="relative bg-white dark:bg-[#111114] border border-slate-200 dark:border-white/5 rounded-2xl p-4 shadow-2xl focus-within:border-blue-500/50 transition-all">
+                        <textarea id="promptInput" rows="3" placeholder="What kind of leads are you looking for today?" class="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-lg resize-none placeholder:text-slate-600 pb-12"></textarea>
+                        
+                        <div class="absolute bottom-4 right-4 flex items-center gap-2">
+                            <button id="searchBtn" onclick="generateLeads()" class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i data-lucide="sparkles" class="h-4 w-4"></i>
+                                Generate Leads
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Prompts -->
+                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                        <button onclick="setPrompt('Find 15 local plumbing businesses with poor or missing websites. Focus on companies that could benefit from an SEO and modern redesign overhaul.')" class="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5 text-[11px] text-slate-600 dark:text-slate-400 transition-colors">
+                            No Website / Poor Website
+                        </button>
+                        <button onclick="setPrompt('Find 10 B2B SaaS companies that recently launched and need outbound sales optimization or cold email systems.')" class="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5 text-[11px] text-slate-600 dark:text-slate-400 transition-colors">
+                            B2B SaaS Startups
+                        </button>
+                        <button onclick="setPrompt('Find 20 real estate agencies focusing on luxury markets that need a premium rebrand and video marketing.')" class="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5 text-[11px] text-slate-600 dark:text-slate-400 transition-colors">
+                            Luxury Real Estate
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden flex-col items-center justify-center py-16">
+                    <div class="relative w-12 h-12 flex items-center justify-center mb-4">
+                        <div class="absolute inset-0 border-t-2 border-blue-500 rounded-full animate-spin"></div>
+                        <div class="absolute inset-2 border-r-2 border-orange-500 rounded-full animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+                        <i data-lucide="sparkles" class="h-4 w-4 text-blue-400 animate-pulse"></i>
+                    </div>
+                    <p id="loadingText" class="text-slate-600 dark:text-slate-400 text-sm font-medium animate-pulse">AI is scraping and structuring leads...</p>
+                </div>
+
+                <!-- Results Section -->
+                <section id="resultsSection" class="hidden flex-1 flex flex-col pb-12 pt-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-4">
+                        <div>
+                            <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                <i data-lucide="database" class="h-4 w-4 text-blue-500"></i>
+                                Search Results
+                            </h2>
+                            <div id="tierSummary" class="text-[10px] text-slate-500 mt-1.5"></div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap items-center">
+                            <select id="exportTierSelect" title="Choose which tier to export" class="text-xs bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg pl-2 pr-7 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50 appearance-none">
+                                <option value="all">📦 All Combined</option>
+                                <option value="1">🟢 Tier 1 — Hot</option>
+                                <option value="2">🟡 Tier 2 — Good</option>
+                                <option value="3">🟠 Tier 3 — Partial</option>
+                            </select>
+                            <button onclick="exportCSV()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-xs text-slate-900 dark:text-white border border-slate-200 dark:border-white/5 transition-colors">
+                                <i data-lucide="download" class="h-4 w-4"></i>
+                                CSV
+                            </button>
+                            <button onclick="exportXLSX()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-xs text-slate-900 dark:text-white border border-slate-200 dark:border-white/5 transition-colors">
+                                <i data-lucide="file-spreadsheet" class="h-4 w-4"></i>
+                                Excel
+                            </button>
+                            <button onclick="exportPDF()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-xs text-slate-900 dark:text-white border border-slate-200 dark:border-white/5 transition-colors">
+                                <i data-lucide="file-text" class="h-4 w-4"></i>
+                                PDF
+                            </button>
+                            <button onclick="renameLatestSearch()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-xs border border-blue-500/20 transition-colors">
+                                <i data-lucide="tag" class="h-4 w-4"></i>
+                                Name this search
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mb-4">Tier is based on live website status and available contact channels — pick a tier above, then export in any format.</p>
+
+                    <!-- Phase 3, Feature 1: Verified Filter Toggle -->
+                    <div class="flex items-center justify-between mb-4 px-1">
+                        <label class="flex items-center gap-3 cursor-pointer select-none w-fit">
+                            <span class="relative inline-flex items-center shrink-0">
+                                <input type="checkbox" id="verifiedOnlyToggle" onchange="toggleVerifiedFilter()" class="sr-only peer">
+                                <span class="w-10 h-5 bg-slate-300 dark:bg-white/10 rounded-full peer-checked:bg-blue-500 transition-colors"></span>
+                                <span class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5"></span>
+                            </span>
+                            <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Only Show Verified Leads</span>
+                        </label>
+                        <span id="verifiedFilterCount" class="text-[10px] text-slate-500"></span>
+                    </div>
+
+                    <div class="flex-1 border border-slate-200 dark:border-white/5 rounded-xl overflow-x-auto bg-white dark:bg-[#111114]">
+                        <table class="w-full text-left text-sm border-collapse whitespace-nowrap">
+                            <thead id="tableHead" class="bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 font-medium">
+                                <tr id="tableHeadRow">
+                                    <!-- Populated by JS (dynamic columns) -->
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody" class="divide-y divide-white/5">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#111114] w-full max-w-md rounded-2xl border border-slate-200 dark:border-white/5 shadow-2xl overflow-hidden transform scale-95 transition-transform duration-200 opacity-0 text-slate-900 dark:text-slate-200">
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center">
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white">Settings</h3>
+            <button onclick="toggleModal('settingsModal')" class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Gemini API Key(s)</label>
+                <p class="text-xs text-slate-500 mb-3">Required to generate AI leads. Get one for free from Google AI Studio. Add more than one (one per line) — if a key hits its daily limit, the app automatically tries the next one.</p>
+                <textarea id="apiKeyInput" rows="3" placeholder="AIzaSy...&#10;AQ...&#10;(one key per line)" class="w-full bg-white dark:bg-[#0A0A0C] border border-slate-200 dark:border-white/5 rounded-lg p-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50 font-mono transition-colors resize-none"></textarea>
+            </div>
+            <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-400">
+                <i data-lucide="info" class="h-4 w-4 inline mr-1 -mt-0.5"></i>
+                API keys are stored only in your browser's LocalStorage and sent directly from your browser to Google — never to any server of ours.
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-slate-50 dark:bg-white/[0.02] border-t border-slate-200 dark:border-white/5 flex justify-end">
+            <button onclick="saveSettings()" class="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 hover:opacity-90 transition-all">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Saved Lists Modal -->
+<div id="savedListsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#111114] w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/5 shadow-2xl overflow-hidden transform scale-95 transition-transform duration-200 opacity-0 text-slate-900 dark:text-slate-200 max-h-[80vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex justify-between items-center shrink-0">
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white">Saved Lists</h3>
+            <button onclick="toggleModal('savedListsModal')" class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+        </div>
+        <div class="p-4 border-b border-slate-200 dark:border-white/5 shrink-0">
+            <input type="text" id="savedListsSearch" oninput="renderSavedLists()" placeholder="Search by name..." class="w-full bg-slate-100 dark:bg-[#0A0A0C] border border-slate-200 dark:border-white/5 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50">
+        </div>
+        <div id="savedListsBody" class="p-4 space-y-2 overflow-y-auto flex-1"></div>
+    </div>
+</div>
+
+<!-- Upgrade Modal -->
+<div id="upgradeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#111114] w-full max-w-3xl rounded-3xl border border-slate-200 dark:border-white/5 shadow-2xl overflow-hidden flex flex-col md:flex-row relative transform scale-95 transition-transform duration-200 opacity-0 text-slate-900 dark:text-slate-200">
+        <button onclick="toggleModal('upgradeModal')" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white z-20"><i data-lucide="x" class="h-5 w-5 bg-black/40 md:bg-transparent rounded-full p-0.5"></i></button>
+        
+        <!-- Left: Free Plan -->
+        <div class="flex-1 p-8 md:p-10 bg-white dark:bg-[#111114]">
+            <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Free Starter</h3>
+            <p class="text-slate-600 dark:text-slate-400 text-sm mb-6">Perfect for testing the waters.</p>
+            <div class="text-4xl font-black text-slate-900 dark:text-white mb-6">$0<span class="text-lg font-medium text-slate-500">/mo</span></div>
+            <ul class="space-y-3 mb-8 text-sm">
+                <li class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4 text-green-400"></i> 5 Searches per day</li>
+                <li class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4 text-green-400"></i> Standard AI Generation</li>
+                <li class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4 text-green-400"></i> CSV Export</li>
+            </ul>
+            <button class="w-full py-2.5 rounded-xl border border-slate-200 dark:border-white/5 hover:bg-slate-100 dark:bg-white/5 font-semibold text-sm transition-colors text-slate-700 dark:text-slate-300">Current Plan</button>
+        </div>
+
+        <!-- Right: Pro Plan -->
+        <div class="flex-1 p-8 md:p-10 bg-gradient-to-br from-blue-900/10 to-orange-900/10 border-t md:border-t-0 md:border-l border-slate-200 dark:border-white/5 relative">
+            <div class="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-blue-500 to-orange-500"></div>
+            <div class="inline-block px-3 py-1 bg-gradient-to-r from-blue-500 to-orange-500 text-white text-[10px] font-bold tracking-wider rounded-full mb-4 uppercase">Most Popular</div>
+            <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Pro Agency</h3>
+            <p class="text-slate-700 dark:text-slate-300 text-sm mb-6">Unlimited daily lead generation.</p>
+            <div class="text-4xl font-black text-slate-900 dark:text-white mb-6">$199<span class="text-lg font-medium text-slate-600 dark:text-slate-400">/mo</span></div>
+            <ul class="space-y-3 mb-6 text-sm font-medium">
+                <li class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4 text-blue-400"></i> Unlimited Searches</li>
+                <li class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4 text-blue-400"></i> Same AI Generation Quality</li>
+                <li class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4 text-blue-400"></i> CSV Export</li>
+            </ul>
+
+            <div class="space-y-2 mb-4">
+                <a href="https://wa.me/${WHATSAPP_NUMBER}?text=Hi%2C%20I%27d%20like%20to%20upgrade%20to%20the%20Pro%20plan%20for%20Reshalat%20Lead%20Finder" target="_blank" rel="noopener noreferrer" class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition-colors">
+                    <i data-lucide="message-circle" class="h-4 w-4"></i> Contact on WhatsApp
+                </a>
+                <a href="mailto:${CONTACT_EMAIL}?subject=Reshalat%20Lead%20Finder%20-%20Pro%20Upgrade" class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-900 dark:text-white font-bold text-sm transition-colors">
+                    <i data-lucide="mail" class="h-4 w-4"></i> Contact by Email
+                </a>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-2">Already paid and received a code?</p>
+            <div class="flex gap-2">
+                <input type="text" id="unlockCodeInput" placeholder="Enter unlock code" class="flex-1 bg-white dark:bg-[#0A0A0C] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50">
+                <button onclick="unlockPro()" class="px-4 py-2 rounded-lg bg-white text-black font-bold text-sm hover:opacity-90 transition-opacity">Unlock</button>
+            </div>
+            <p id="unlockMsg" class="text-xs mt-2"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Auth Modal (Firebase Placeholder) -->
+<div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#111114] w-full max-w-sm rounded-2xl border border-slate-200 dark:border-white/5 shadow-2xl p-8 relative text-center transform scale-95 transition-transform duration-200 opacity-0 text-slate-900 dark:text-slate-200">
+        <button onclick="toggleModal('authModal')" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+        <div class="mx-auto w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+            <i data-lucide="user" class="h-6 w-6 text-blue-400"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Sign In</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">Access your saved leads and limits.</p>
+        
+        <button onclick="simulateLogin('user@example.com')" class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl font-medium text-sm transition-colors mb-3 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white">
+            <svg class="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Sign in with Google
+        </button>
+
+        <button onclick="simulateLogin('reshalat.media@gmail.com')" class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white text-black hover:opacity-90 rounded-xl font-bold text-sm transition-opacity">
+            <i data-lucide="shield" class="h-4 w-4"></i>
+            Admin Login (Reshalat)
+        </button>
+
+        <p class="mt-4 text-[10px] text-slate-500 uppercase tracking-wider">Firebase Auth Placeholder</p>
+    </div>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+<script>
+    // --- Application State ---
+    const ADMIN_EMAILS = ['reshalat.media@gmail.com', 'risalatislam333@gmail.com'];
+    const UNLOCK_PASSWORD = 'unlimitedleads';
+    const FREE_SEARCHES_PER_DAY = 5;
+    const WHATSAPP_NUMBER = '8801797141030'; // no leading 0 or +, required for wa.me links
+    const CONTACT_EMAIL = 'risalatislam333@gmail.com';
+
+    function todayStr() {
+        return new Date().toISOString().slice(0, 10); // YYYY-MM-DD, resets daily
+    }
+
+    // Migrate legacy single-key storage into the new multi-key list once.
+    (function migrateApiKeyStorage() {
+        const legacy = localStorage.getItem('geminiApiKey');
+        if (legacy && !localStorage.getItem('geminiApiKeys')) {
+            localStorage.setItem('geminiApiKeys', JSON.stringify([legacy]));
+        }
+    })();
+
+    // Reset the daily counter if the stored date isn't today.
+    (function resetDailyCounterIfNeeded() {
+        if (localStorage.getItem('searchDate') !== todayStr()) {
+            localStorage.setItem('searchDate', todayStr());
+            localStorage.setItem('searchesToday', '0');
+        }
+    })();
+
+    const APP_STATE = {
+        theme: localStorage.getItem('theme') || 'dark',
+        apiKeys: JSON.parse(localStorage.getItem('geminiApiKeys') || '[]'),
+        user: null, // { email: string, role: 'free' | 'admin' }
+        isPro: localStorage.getItem('isPro') === 'true',
+        searchesToday: parseInt(localStorage.getItem('searchesToday')) || 0,
+        leads: [],
+        savedSearches: JSON.parse(localStorage.getItem('savedSearches') || '[]'),
+        activeColumns: null, // set to STANDARD_COLUMNS below, once defined; per-search after that
+        onlyShowVerified: false // Phase 3: "Only Show Verified Leads" table filter state
+    };
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize Lucide Icons
+        lucide.createIcons();
+        
+        // Setup Theme
+        applyTheme();
+
+        // Setup API Key Input (one per line, tried in order)
+        document.getElementById('apiKeyInput').value = APP_STATE.apiKeys.join('\n');
+
+        // Render Auth state
+        renderAuthUI();
+    });
+
+    // --- Theme Logic ---
+    function applyTheme() {
+        if (APP_STATE.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.getElementById('themeIcon').setAttribute('data-lucide', 'sun');
+        } else {
+            document.documentElement.classList.remove('dark');
+            document.getElementById('themeIcon').setAttribute('data-lucide', 'moon');
+        }
+        lucide.createIcons();
+    }
+
+    function toggleTheme() {
+        APP_STATE.theme = APP_STATE.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', APP_STATE.theme);
+        applyTheme();
+    }
+
+    // --- Modals ---
+    function toggleModal(id) {
+        const modal = document.getElementById(id);
+        const inner = modal.firstElementChild;
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            // Animate in
+            setTimeout(() => {
+                inner.classList.remove('scale-95', 'opacity-0');
+                inner.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        } else {
+            // Animate out
+            inner.classList.remove('scale-100', 'opacity-100');
+            inner.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+    }
+
+    function saveSettings() {
+        const keys = document.getElementById('apiKeyInput').value
+            .split('\n')
+            .map(k => k.trim())
+            .filter(Boolean);
+        APP_STATE.apiKeys = keys;
+        localStorage.setItem('geminiApiKeys', JSON.stringify(keys));
+        toggleModal('settingsModal');
+    }
+
+    function setPrompt(text) {
+        document.getElementById('promptInput').value = text;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // --- Auth & Freemium Logic ---
+    function simulateLogin(email) {
+        const isAdmin = ADMIN_EMAILS.includes(email);
+        APP_STATE.user = { email, role: isAdmin ? 'admin' : 'free' };
+        toggleModal('authModal');
+        renderAuthUI();
+    }
+
+    function logout() {
+        APP_STATE.user = null;
+        renderAuthUI();
+    }
+
+    function renderAuthUI() {
+        const container = document.getElementById('authContainer');
+        const usagePill = document.getElementById('usagePill');
+        const usageCount = document.getElementById('usageCount');
+
+        if (APP_STATE.user) {
+            // Logged In
+            const isAdmin = APP_STATE.user.role === 'admin';
+            container.innerHTML = `
+                <div class="flex items-center gap-3 p-3 bg-white dark:bg-[#111114] rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
+                    <div class="h-8 w-8 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-500 flex items-center justify-center font-bold text-xs shrink-0">
+                        ${APP_STATE.user.email.charAt(0).toUpperCase()}${APP_STATE.user.email.charAt(1).toUpperCase()}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-medium text-slate-900 dark:text-white truncate">${APP_STATE.user.email}</p>
+                        <p class="text-[10px] ${(isAdmin || APP_STATE.isPro) ? 'text-green-400' : 'text-slate-500'} font-mono">${isAdmin ? 'ADMIN ACCESS' : (APP_STATE.isPro ? 'PRO (UNLOCKED)' : 'FREE PLAN')}</p>
+                    </div>
+                    <button onclick="logout()" class="text-slate-500 hover:text-red-400 transition-colors p-1 shrink-0" title="Sign Out">
+                        <i data-lucide="log-out" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            `;
+            
+            // Usage Pill Logic
+            if (isAdmin || APP_STATE.isPro) {
+                usagePill.classList.remove('hidden');
+                usagePill.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>Unlimited`;
+            } else {
+                usagePill.classList.remove('hidden');
+                usagePill.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-green-400"></span><span id="usageCount">${APP_STATE.searchesToday}</span>/${FREE_SEARCHES_PER_DAY} Free Today`;
+            }
+        } else {
+            // Logged Out
+            container.innerHTML = `
+                <div class="text-xs text-slate-500 mb-2 px-1 text-center">Sign in to save leads</div>
+                <button onclick="toggleModal('authModal')" class="w-full py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white border border-slate-200 dark:border-white/5 rounded-xl font-medium text-sm transition-colors shadow-sm">
+                    Sign In
+                </button>
+            `;
+            usagePill.classList.add('hidden');
+        }
+        lucide.createIcons();
+    }
+
+    function checkLimits() {
+        // Not logged in -> force login
+        if (!APP_STATE.user) {
+            toggleModal('authModal');
+            return false;
+        }
+
+        // Admin or unlocked-via-password -> unlimited
+        if (APP_STATE.user.role === 'admin' || APP_STATE.isPro) return true;
+
+        // Free -> daily count (resets automatically at local midnight on next load)
+        if (APP_STATE.searchesToday >= FREE_SEARCHES_PER_DAY) {
+            toggleModal('upgradeModal');
+            return false;
+        }
+
+        return true;
+    }
+
+    function unlockPro() {
+        const input = document.getElementById('unlockCodeInput');
+        const msg = document.getElementById('unlockMsg');
+        if (input.value.trim() === UNLOCK_PASSWORD) {
+            APP_STATE.isPro = true;
+            localStorage.setItem('isPro', 'true');
+            msg.textContent = 'Unlocked! Unlimited searches enabled on this browser.';
+            msg.className = 'text-xs text-green-500 mt-2';
+            renderAuthUI();
+            setTimeout(() => toggleModal('upgradeModal'), 1200);
+        } else {
+            msg.textContent = 'Incorrect code.';
+            msg.className = 'text-xs text-red-500 mt-2';
+        }
+    }
+
+    // --- Real-data pipeline: OpenStreetMap (free, no card, no key) + Gemini ---
+    // Overpass/Nominatim give REAL businesses; Gemini is used to (a) translate
+    // the prompt into an OSM query, and (b) filter/enrich/write copy on top of
+    // real results — never to invent businesses when real data is available.
+
+    const GEMINI_MODEL = 'gemini-3.6-flash';
+
+    // Shared multi-key-fallback caller, reused by every Gemini call below.
+    // Pulls "Please retry in 44s" (or similar) out of Gemini's own error
+    // text so the UI can show a real countdown instead of a guessed wait.
+    function extractRetryDelaySeconds(message) {
+        const match = (message || '').match(/retry in ([\d.]+)\s*s/i);
+        if (match) return Math.min(Math.ceil(parseFloat(match[1])), 60); // cap wait at 60s
+        return null;
+    }
+
+    async function sleepWithCountdown(seconds, onProgress) {
+        for (let remaining = seconds; remaining > 0; remaining--) {
+            if (onProgress) onProgress(`Rate limited by Gemini — retrying in ${remaining}s...`);
+            await new Promise((r) => setTimeout(r, 1000));
+        }
+    }
+
+    async function callGeminiJSON(systemInstruction, userText, schema, onProgress) {
+        let lastError = null;
+        const MAX_ATTEMPTS_PER_KEY = 2; // 1 initial try + 1 backoff retry on the same key
+
+        for (let i = 0; i < APP_STATE.apiKeys.length; i++) {
+            const candidateKey = APP_STATE.apiKeys[i];
+
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_KEY; attempt++) {
+                let response;
+                try {
+                    if (onProgress && attempt === 1) onProgress('Asking Gemini to find real leads...');
+                    response = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(candidateKey)}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: userText }] }],
+                                systemInstruction: { parts: [{ text: systemInstruction }] },
+                                generationConfig: { responseMimeType: 'application/json', responseSchema: schema }
+                            })
+                        }
+                    );
+                } catch (networkErr) {
+                    lastError = networkErr;
+                    break; // network error — no point retrying this same key, move to next key
+                }
+
+                const parsed = await response.json();
+                if (response.ok) {
+                    const rawText = parsed?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+                    if (!rawText.trim()) { lastError = new Error('The model returned an empty response.'); break; }
+                    try {
+                        return JSON.parse(rawText.trim());
+                    } catch {
+                        lastError = new Error("The model's response wasn't valid JSON.");
+                        break;
+                    }
+                }
+
+                lastError = new Error(parsed?.error?.message || 'API Error');
+                const status = parsed?.error?.status || '';
+                const msg = (parsed?.error?.message || '').toLowerCase();
+                const isQuotaIssue = status === 'RESOURCE_EXHAUSTED' || msg.includes('quota') || msg.includes('rate limit');
+
+                if (isQuotaIssue && attempt < MAX_ATTEMPTS_PER_KEY) {
+                    const delay = extractRetryDelaySeconds(parsed?.error?.message) || 10;
+                    await sleepWithCountdown(delay, onProgress);
+                    continue; // retry the SAME key once, now that the suggested wait has passed
+                }
+                break; // out of retries on this key (or a non-quota error) — try the next key, if any
+            }
+
+            if (i < APP_STATE.apiKeys.length - 1 && onProgress) {
+                onProgress('Trying your next API key...');
+            }
+        }
+        throw lastError || new Error('All configured API keys failed.');
+    }
+
+    // Free, no-key, no-card geocoder. Public instance — keep volume light.
+    async function geocodeArea(areaName) {
+        if (!areaName) return null;
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(areaName)}`;
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return null;
+            const data = await res.json();
+            if (!data || !data[0] || !data[0].boundingbox) return null;
+            const b = data[0].boundingbox; // [south, north, west, east] as strings
+            return { south: parseFloat(b[0]), north: parseFloat(b[1]), west: parseFloat(b[2]), east: parseFloat(b[3]) };
+        } catch {
+            return null;
+        }
+    }
+
+    // Real business discovery from OpenStreetMap. Returns [] on any failure
+    // or if the niche has poor OSM coverage — caller falls back to AI-only.
+    // Multiple public mirrors — CORS support and uptime vary between them,
+    // so try each in order rather than depending on a single server.
+    const OVERPASS_ENDPOINTS = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.openstreetmap.ru/api/interpreter'
+    ];
+
+    async function queryOverpass(osmTags, nameKeyword, bbox, limit) {
+        if (!bbox) return [];
+        const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
+        const tagFilters = (osmTags && osmTags.length > 0)
+            ? osmTags.map(t => `["${t.key}"="${t.value}"]`).join('')
+            : (nameKeyword ? `["name"~"${nameKeyword}",i]` : '');
+        if (!tagFilters) return [];
+
+        const query = `[out:json][timeout:25];(node${tagFilters}(${bboxStr});way${tagFilters}(${bboxStr}););out center ${limit || 60};`;
+
+        for (const endpoint of OVERPASS_ENDPOINTS) {
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: query
+                });
+                if (!res.ok) {
+                    console.warn(`[Overpass] ${endpoint} returned HTTP ${res.status}, trying next mirror.`);
+                    continue;
+                }
+                const data = await res.json();
+                console.info(`[Overpass] Success via ${endpoint}`);
+                return (data.elements || [])
+                    .map(el => {
+                        const tags = el.tags || {};
+                        return {
+                            name: tags.name || '',
+                            phone: tags.phone || tags['contact:phone'] || '',
+                            website: tags.website || tags['contact:website'] || '',
+                            address: [tags['addr:housenumber'], tags['addr:street'], tags['addr:city']].filter(Boolean).join(' '),
+                            category: tags.shop || tags.amenity || tags.craft || tags.office || ''
+                        };
+                    })
+                    .filter(b => b.name);
+            } catch (e) {
+                console.warn(`[Overpass] ${endpoint} failed (${e.message}), trying next mirror.`);
+                continue;
+            }
+        }
+
+        console.warn('[Overpass] All mirrors failed — falling back to AI-only.');
+        return [];
+    }
+
+    const INTERPRET_SCHEMA = {
+        type: "OBJECT",
+        properties: {
+            areaName: { type: "STRING" },
+            osmTags: { type: "ARRAY", items: { type: "OBJECT", properties: { key: { type: "STRING" }, value: { type: "STRING" } }, required: ["key", "value"] } },
+            nameKeywordFallback: { type: "STRING" },
+            excludeFranchises: { type: "BOOLEAN" }
+        },
+        required: ["areaName", "osmTags", "nameKeywordFallback", "excludeFranchises"]
+    };
+
+    const INTERPRET_SYSTEM = `You translate a lead-generation request into an OpenStreetMap search plan.
+Return:
+- "areaName": a clean, geocodable place name (city/region/country) extracted from the prompt. If none given, use "United States".
+- "osmTags": the most likely real OpenStreetMap tag(s) for this niche, as {key,value} pairs, using standard OSM tagging (e.g. plumber -> [{"key":"craft","value":"plumber"}], dentist -> [{"key":"amenity","value":"dentist"}], lawyer -> [{"key":"office","value":"lawyer"}], restaurant -> [{"key":"amenity","value":"restaurant"}], hair salon -> [{"key":"shop","value":"hairdresser"}]). If genuinely no reasonable OSM tag exists for this niche (e.g. "business coach", "SEO agency", "social media consultant" — abstract services OSM rarely maps), return an empty array.
+- "nameKeywordFallback": a short keyword to search business names for if osmTags is empty (e.g. "coach", "consulting").
+- "excludeFranchises": true if the prompt implies wanting small/independent/local businesses rather than national chains or franchises.`;
+
+    // --- Dynamic Column System (Phase 1) ---
+    // Fixed default schema (Standard 10 columns). "dataSource" is never asked
+    // of the model — it's computed locally from the always-present internal
+    // "source" field (osm/ai), exactly like the old hardcoded badge logic.
+    // NOTE: pitchHook has been fully removed (schema, prompts, UI, exporters).
+    const STANDARD_COLUMNS = [
+        { key: 'businessName',   label: 'Business Name' },
+        { key: 'ownerCeo',       label: 'Owner / CEO' },
+        { key: 'niche',          label: 'Niche' },
+        { key: 'contactEmail',   label: 'Email' },
+        { key: 'phone',          label: 'Phone' },
+        { key: 'websiteUrl',     label: 'Website' },
+        { key: 'linkedinProfile',label: 'LinkedIn Profile' },
+        { key: 'socialLinks',    label: 'Social Links' },
+        { key: 'dataSource',     label: 'Data Source', computed: true },
+        { key: 'address',        label: 'Location / Address' }
+    ];
+    APP_STATE.activeColumns = STANDARD_COLUMNS.slice();
+
+    // Loose aliases so "Email", "Website", "Location", etc. in a specific:/
+    // extra: directive map onto the canonical standard column instead of
+    // being (re)created as a duplicate custom field.
+    const COLUMN_ALIASES = {
+        'business name': 'businessName', 'name': 'businessName', 'company': 'businessName', 'business': 'businessName',
+        'owner': 'ownerCeo', 'owner/ceo': 'ownerCeo', 'owner / ceo': 'ownerCeo', 'ceo': 'ownerCeo',
+        'niche': 'niche', 'industry': 'niche', 'category': 'niche',
+        'email': 'contactEmail', 'contact email': 'contactEmail', 'e-mail': 'contactEmail',
+        'phone': 'phone', 'phone number': 'phone', 'telephone': 'phone',
+        'website': 'websiteUrl', 'website url': 'websiteUrl', 'url': 'websiteUrl',
+        'linkedin': 'linkedinProfile', 'linkedin profile': 'linkedinProfile', 'linkedin url': 'linkedinProfile',
+        'social': 'socialLinks', 'social links': 'socialLinks', 'social media': 'socialLinks', 'facebook/instagram': 'socialLinks',
+        'data source': 'dataSource', 'source': 'dataSource',
+        'location': 'address', 'address': 'address', 'location / address': 'address', 'location/address': 'address'
+    };
+
+    const RESERVED_FIELD_KEYS = new Set(['id', 'verification', 'source']);
+
+    function toCamelKey(label) {
+        const words = (label || '').trim().split(/[^a-zA-Z0-9]+/).filter(Boolean);
+        if (words.length === 0) return null;
+        return words.map((w, i) => i === 0 ? w.charAt(0).toLowerCase() + w.slice(1) : w.charAt(0).toUpperCase() + w.slice(1)).join('');
+    }
+
+    // Resolves one requested column label (from specific:/extra:) to either a
+    // canonical STANDARD_COLUMNS entry, or a new custom column definition.
+    function resolveColumnLabel(rawLabel) {
+        const norm = rawLabel.trim().toLowerCase().replace(/\s+/g, ' ');
+        if (!norm) return null;
+        const aliasKey = COLUMN_ALIASES[norm];
+        if (aliasKey) {
+            const std = STANDARD_COLUMNS.find(c => c.key === aliasKey);
+            if (std) return std;
+        }
+        const stdMatch = STANDARD_COLUMNS.find(c => c.label.toLowerCase() === norm);
+        if (stdMatch) return stdMatch;
+        let key = toCamelKey(rawLabel) || `field${Math.random().toString(36).slice(2, 7)}`;
+        if (RESERVED_FIELD_KEYS.has(key)) key = `${key}Field`;
+        return { key, label: rawLabel.trim(), custom: true };
+    }
+
+    // Pulls the value after "specific:"/"extra:" — supports both
+    // "Extra: (A, B)" and "Extra: A, B" (terminated by newline or the next
+    // directive keyword on the same line).
+    function extractDirectiveValue(text, keyword) {
+        const parenRe = new RegExp(keyword + '\\s*:\\s*\\(([^)]+)\\)', 'i');
+        let m = text.match(parenRe);
+        if (m) return m[1];
+        const lineRe = new RegExp(keyword + '\\s*:\\s*([^\\n]+)', 'i');
+        m = text.match(lineRe);
+        if (!m) return null;
+        return m[1].split(/\b(?:extra|specific)\s*:/i)[0].trim();
+    }
+
+    function parseColumnList(rawValue) {
+        if (!rawValue) return [];
+        return rawValue.split(',').map(s => s.trim()).filter(Boolean).map(resolveColumnLabel).filter(Boolean);
+    }
+
+    // Builds the active column set for a prompt, per Phase 1 rules:
+    //  - specific: present -> OVERRIDE default columns, output ONLY those fields
+    //  - extra: present    -> RETAIN the 10 standard columns, APPEND extra fields
+    //  - both present      -> specific fields + extra fields
+    //  - neither present   -> the fixed 10 standard columns
+    function getActiveColumns(promptText) {
+        const specificRaw = extractDirectiveValue(promptText, 'specific');
+        const extraRaw = extractDirectiveValue(promptText, 'extra');
+
+        let columns = specificRaw ? parseColumnList(specificRaw) : STANDARD_COLUMNS.slice();
+        if (columns.length === 0) columns = STANDARD_COLUMNS.slice(); // malformed specific: -> safe fallback
+
+        if (extraRaw) {
+            for (const col of parseColumnList(extraRaw)) {
+                if (!columns.find(c => c.key === col.key)) columns.push(col);
+            }
+        }
+        return columns;
+    }
+
+    // Strips the specific:/extra: directives out of the prompt before it's
+    // sent to the OSM-interpretation and lead-generation stages, so they
+    // don't confuse area/niche detection or business-description writing.
+    function stripColumnDirectives(promptText) {
+        return promptText
+            .replace(/specific\s*:\s*\([^)]+\)/gi, '')
+            .replace(/extra\s*:\s*\([^)]+\)/gi, '')
+            .replace(/specific\s*:\s*[^\n]+/gi, '')
+            .replace(/extra\s*:\s*[^\n]+/gi, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    }
+
+    function buildLeadSchema(columns) {
+        const properties = {};
+        const required = [];
+        for (const col of columns) {
+            if (col.key === 'dataSource') continue; // computed locally, never asked of the model
+            properties[col.key] = { type: "STRING" };
+            required.push(col.key);
+        }
+        // Always fetched internally — drives the "Real business (OSM)" vs
+        // "AI-estimated" badges and the computed Data Source column,
+        // regardless of which columns the user asked to see.
+        properties.source = { type: "STRING" };
+        required.push('source');
+        return { type: "ARRAY", items: { type: "OBJECT", properties, required } };
+    }
+
+    // Decision-Maker Hierarchy rule (Phase 1): always search for the
+    // highest-ranking person available, in this strict order, and label the
+    // result with their actual title. LinkedIn/Email/Phone guidance below
+    // is written to naturally follow whoever this identifies.
+    const DECISION_MAKER_HIERARCHY_RULE = 'Identify the highest-ranking decision maker at the business using this strict power hierarchy (highest to lowest): Founder > CEO > Owner > President > Managing Director (MD) > General Manager (GM). Search for the highest title available in that order — do not default to a lower-ranked title if a higher one is confidently known.';
+
+    const STANDARD_FIELD_GUIDANCE = {
+        businessName: 'copy directly from the real data given (do not invent a value).',
+        ownerCeo: `${DECISION_MAKER_HIERARCHY_RULE} Format the value as "Full Name (Title)" using the actual title you found — e.g. "John Doe (CEO)", "Jane Smith (Founder)", "Alex Lee (Owner)", "Sam Patel (President)", "Priya Rao (MD)", "Chris Webb (GM)". Only fill this in if you're genuinely confident about a specific real name; otherwise "Unknown". Never guess a name for a small local business.`,
+        niche: 'the business category/niche.',
+        contactEmail: 'ONLY if a website was provided: if you know the decision maker\'s name (see "Owner / CEO") and are confident in the company\'s email naming convention, output a name-based pattern like "first.last@[that domain]"; otherwise a generic pattern like "info@[that domain]". Otherwise "Unknown".',
+        phone: 'copy directly from the real data given (mark "Unavailable" if the field was empty); if a direct line for the decision maker named in "Owner / CEO" is confidently known, prefer that over the general business line.',
+        websiteUrl: 'copy directly from the real data given (mark "Unavailable" if the field was empty).',
+        linkedinProfile: 'the LinkedIn profile URL of the decision maker named in "Owner / CEO" (same hierarchy — prefer their personal profile over the generic company page), only if you have real confidence in a specific one; otherwise "Unavailable".',
+        socialLinks: 'other social profiles (Facebook/Instagram) formatted as "Platform: url | Platform: url"; "Unavailable" unless you have real confidence in a specific handle.',
+        address: 'the street address/location, copied from the real data if given; otherwise "Unknown".'
+    };
+
+    function buildFieldGuidance(columns) {
+        return columns
+            .filter(c => c.key !== 'dataSource')
+            .map(c => `- ${c.key} ("${c.label}"): ${STANDARD_FIELD_GUIDANCE[c.key] || 'your best honest estimate based on general knowledge; use "Unknown" if you cannot determine this confidently — never fabricate a precise-looking number or fact.'}`)
+            .join('\n');
+    }
+
+    // Second-stage: given REAL businesses, filter/format/write copy — never invent new ones.
+    function buildEnrichPrompt(userPrompt, realBusinesses, excludeFranchises, columns) {
+        return `User's request: "${userPrompt}"
+${excludeFranchises ? 'The user wants small/independent businesses — exclude anything that looks like a national chain or franchise.' : ''}
+
+Here is a list of REAL businesses found via OpenStreetMap. Use ONLY businesses from this list — do not add any business not in this list:
+${JSON.stringify(realBusinesses)}
+
+For each one you include, output these fields:
+${buildFieldGuidance(columns)}
+- source: always exactly "osm" for every lead in this response.`;
+    }
+
+    function buildFallbackSystem(columns) {
+        return `You are a lead generation assistant. OpenStreetMap had no/insufficient real data for this niche or area, so you're generating from general knowledge instead. Prioritize real, well-established businesses you're genuinely confident exist. Never fabricate a website or email you're not confident about — use "Unavailable"/"Unknown". Set "source" to exactly "ai" for every lead. ${DECISION_MAKER_HIERARCHY_RULE}
+Fields:
+${buildFieldGuidance(columns)}`;
+    }
+
+    // --- Core AI Logic ---
+    async function generateLeads() {
+        const prompt = document.getElementById('promptInput').value.trim();
+        
+        if (!prompt) return alert('Please enter a prompt describing the leads you want.');
+        if (!APP_STATE.apiKeys || APP_STATE.apiKeys.length === 0) {
+            toggleModal('settingsModal');
+            return alert('Please configure your Gemini API Key in Settings first.');
+        }
+
+        if (!checkLimits()) return;
+
+        // UI State
+        const btn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loadingState');
+        const results = document.getElementById('resultsSection');
+        
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i> Generating...`;
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        results.classList.add('hidden');
+        lucide.createIcons();
+
+        const loadingText = document.getElementById('loadingText');
+        function setLoadingText(msg) {
+            if (loadingText) loadingText.textContent = msg;
+        }
+        setLoadingText('Figuring out where to search for real businesses...');
+
+        // Resolve which columns this search should produce (Phase 1: fixed
+        // 10-col default, overridable/extendable via specific:/extra:), and
+        // strip those directives out before they reach the AI area/niche or
+        // copywriting stages.
+        const activeColumns = getActiveColumns(prompt);
+        const cleanedPrompt = stripColumnDirectives(prompt) || prompt;
+        const dynamicSchema = buildLeadSchema(activeColumns);
+
+        try {
+            // --- Stage 1: ask Gemini how to translate this prompt into a
+            // real OpenStreetMap search (area + tags), instead of asking it
+            // to invent leads directly. ---
+            let plan;
+            try {
+                plan = await callGeminiJSON(INTERPRET_SYSTEM, cleanedPrompt, INTERPRET_SCHEMA, setLoadingText);
+                console.info('[Lead pipeline] Stage 1 (interpret) result:', plan);
+            } catch (e) {
+                console.warn('[Lead pipeline] Stage 1 (interpret) FAILED, skipping to AI-only fallback:', e.message);
+                plan = null;
+            }
+
+            let leads = null;
+
+            if (plan) {
+                setLoadingText('Looking up real businesses on OpenStreetMap...');
+                const bbox = await geocodeArea(plan.areaName);
+                console.info('[Lead pipeline] Stage 2 (geocode) for "' + plan.areaName + '":', bbox);
+
+                const realBusinesses = await queryOverpass(plan.osmTags, plan.nameKeywordFallback, bbox, 60);
+                console.info('[Lead pipeline] Stage 2 (Overpass) found ' + realBusinesses.length + ' real businesses:', realBusinesses);
+
+                if (realBusinesses.length >= 3) {
+                    setLoadingText(`Found ${realBusinesses.length} real businesses — formatting your leads...`);
+                    const enrichPrompt = buildEnrichPrompt(cleanedPrompt, realBusinesses, plan.excludeFranchises, activeColumns);
+                    leads = await callGeminiJSON(
+                        `You format and filter real business data into the exact JSON schema requested. You never invent businesses that were not given to you. ${DECISION_MAKER_HIERARCHY_RULE}`,
+                        enrichPrompt,
+                        dynamicSchema,
+                        setLoadingText
+                    );
+                    console.info('[Lead pipeline] Using REAL OSM-backed results.');
+                } else {
+                    console.warn('[Lead pipeline] Only ' + realBusinesses.length + ' real businesses found (need 3+) — falling back to AI-only.');
+                }
+            } else {
+                console.warn('[Lead pipeline] No plan from Stage 1 — falling back to AI-only.');
+            }
+
+            // --- Fallback: no plan, no geocode, or too few real results —
+            // fall back to the original AI-only generation, clearly labeled. ---
+            if (!leads) {
+                setLoadingText('Generating leads from AI knowledge...');
+                leads = await callGeminiJSON(buildFallbackSystem(activeColumns), cleanedPrompt, dynamicSchema, setLoadingText);
+            }
+
+            if (!Array.isArray(leads)) {
+                throw new Error('Model response was not a JSON array of leads.');
+            }
+
+            // Assign Leads
+            APP_STATE.leads = leads;
+            APP_STATE.activeColumns = activeColumns;
+            autoSaveSearch(prompt, leads, activeColumns);
+            
+            // Increment daily usage unless admin or unlocked
+            if (APP_STATE.user && APP_STATE.user.role !== 'admin' && !APP_STATE.isPro) {
+                APP_STATE.searchesToday++;
+                localStorage.setItem('searchesToday', APP_STATE.searchesToday);
+                localStorage.setItem('searchDate', todayStr());
+                renderAuthUI();
+            }
+
+            renderTable();
+            kickOffBackgroundVerification();
+            kickOffMxChecks();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            results.classList.remove('hidden');
+
+            // Scroll to results
+            results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        } catch (error) {
+            console.error(error);
+            alert(`Error generating leads: ${error.message}\nMake sure your API key is valid.`);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="sparkles" class="h-4 w-4"></i> Generate Leads`;
+            lucide.createIcons();
+        }
+    }
+
+    // Lead fields come from an LLM call that itself ingests arbitrary web
+    // search results, so treat every field as untrusted input. Escape before
+    // ever putting it into innerHTML, and validate before using it as a URL.
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Returns a safe http(s) URL string, or null if the value isn't one.
+    function safeHref(rawUrl) {
+        if (!rawUrl) return null;
+        try {
+            const candidate = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+            const u = new URL(candidate);
+            if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+            return u.href;
+        } catch {
+            return null;
+        }
+    }
+
+    // --- Phase 2, Feature 1: Offline Phone Format Validator (no network call) ---
+    // Flags phone numbers that don't fit a standard E.164 / 10-15 digit
+    // shape, or are an obviously dummy/placeholder sequence (repeated
+    // digits, "1234567890", etc). Purely synchronous — computed at render
+    // time from the value already on the lead.
+    function validatePhoneFormat(rawPhone) {
+        if (!hasUsableValue(rawPhone)) return null; // nothing to validate
+        const cleaned = String(rawPhone).trim();
+        const digits = cleaned.replace(/\D/g, '');
+        const lengthOk = digits.length >= 10 && digits.length <= 15;
+        // E.164-ish shape: optional leading "+", first digit 1-9, 10-15 digits total.
+        const e164Ok = /^\+?[1-9]\d{9,14}$/.test(cleaned.replace(/[\s().-]/g, ''));
+        const isDummySequence = /^(\d)\1{6,}$/.test(digits) // e.g. 5555555555
+            || digits === '1234567890'
+            || digits === '0123456789'
+            || digits === '0000000000';
+        return (lengthOk && e164Ok && !isDummySequence) ? 'valid' : 'invalid';
+    }
+
+    function phoneFormatBadgeHtml(lead) {
+        if (validatePhoneFormat(lead.phone) !== 'invalid') return ''; // only flag problems — keep valid numbers uncluttered
+        return `<span class="phone-format-badge px-1.5 py-0.5 rounded border text-[9px] inline-block bg-red-500/10 text-red-500 dark:text-red-400 border-red-500/20" title="Doesn't match standard E.164 / 10-15 digit phone format">🚫 Invalid Format</span>`;
+    }
+
+    // --- Phase 2, Feature 2: Client-side MX Record Checker (Cloudflare DoH) ---
+    // Flags email addresses whose domain has no active mail (MX) records —
+    // a strong signal of a fake/placeholder/dead domain. Runs fully
+    // client-side against Cloudflare's public DNS-over-HTTPS endpoint;
+    // does not touch verifyLead.mts or the website-verification pipeline.
+    function extractEmailDomain(email) {
+        if (!hasUsableValue(email)) return null;
+        const match = String(email).trim().toLowerCase().match(/@([a-z0-9.-]+\.[a-z]{2,})$/i);
+        return match ? match[1].replace(/\.+$/, '') : null;
+    }
+
+    // Cache Promises (not just results) per domain so multiple leads sharing
+    // a domain (or a duplicate re-render) only ever trigger one DoH lookup.
+    const MX_CHECK_CACHE = new Map();
+
+    async function fetchDomainMx(domain) {
+        if (MX_CHECK_CACHE.has(domain)) return MX_CHECK_CACHE.get(domain);
+        const promise = (async () => {
+            try {
+                const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`, {
+                    headers: { 'Accept': 'application/dns-json' }
+                });
+                if (!res.ok) throw new Error(`DoH responded ${res.status}`);
+                const data = await res.json();
+                const hasMx = Array.isArray(data.Answer) && data.Answer.some(a => a.type === 15 && a.data);
+                return hasMx ? 'valid' : 'invalid';
+            } catch (e) {
+                console.warn('[MX check] failed for', domain, e.message);
+                return 'error';
+            }
+        })();
+        MX_CHECK_CACHE.set(domain, promise);
+        return promise;
+    }
+
+    // Give every lead an MX-check slot. Safe to call repeatedly.
+    function ensureLeadMxState(leads) {
+        (leads || []).forEach(lead => {
+            if (!lead.mxCheck) lead.mxCheck = { status: 'idle', domain: null }; // idle | checking | valid | invalid | error
+        });
+    }
+
+    async function checkOneLeadMx(lead) {
+        const domain = extractEmailDomain(lead.contactEmail);
+        if (!domain) {
+            lead.mxCheck = { status: 'idle', domain: null };
+            return;
+        }
+        lead.mxCheck = { status: 'checking', domain };
+        updateLeadBadgesInDOM(lead.id);
+        const status = await fetchDomainMx(domain);
+        lead.mxCheck = { status, domain };
+        updateLeadBadgesInDOM(lead.id);
+    }
+
+    // Small worker pool (mirrors VERIFY_CONCURRENCY) so many leads sharing
+    // the same email provider don't all hit Cloudflare DoH at once.
+    const MX_CHECK_CONCURRENCY = 4;
+    function kickOffMxChecks() {
+        ensureLeadMxState(APP_STATE.leads);
+        const toCheck = (APP_STATE.leads || []).filter(l => extractEmailDomain(l.contactEmail));
+        if (toCheck.length === 0) return;
+        runWithConcurrency(toCheck, MX_CHECK_CONCURRENCY, checkOneLeadMx);
+    }
+
+    function mxBadgeHtml(lead) {
+        const state = lead.mxCheck;
+        if (!state || state.status === 'idle' || !state.domain) return '';
+        const map = {
+            checking: ['bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20', '⏳ Checking MX…'],
+            valid:    ['bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20', '✅ MX OK'],
+            invalid:  ['bg-red-500/10 text-red-500 dark:text-red-400 border-red-500/20', '🚫 No MX (fake?)'],
+            error:    ['bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20', '⚪ MX check failed']
+        };
+        const entry = map[state.status];
+        if (!entry) return '';
+        const [cls, label] = entry;
+        return `<span class="mx-badge px-1.5 py-0.5 rounded border text-[9px] inline-block ${cls}" title="Domain: ${escapeHtml(state.domain)}">${label}</span>`;
+    }
+
+    // --- Step 2: Live verification (badges + background /api/verifyLead calls) ---
+
+    // Give every lead a stable id + a fresh verification slot. Safe to call
+    // repeatedly (e.g. on a saved search reload) — never overwrites an id
+    // or verification result that's already there.
+    function ensureLeadVerificationState(leads) {
+        (leads || []).forEach((lead, idx) => {
+            if (!lead.id) {
+                lead.id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `lead-${Date.now()}-${idx}`;
+            }
+            if (!lead.verification) {
+                lead.verification = { status: 'idle' }; // idle | pending | done | error
+            }
+        });
+    }
+
+    function normalizePhone(p) {
+        return (p || '').replace(/\D/g, '');
+    }
+
+    function normalizeEmail(e) {
+        return (e || '').trim().toLowerCase();
+    }
+
+    // Formatting varies a lot between "as printed on a website" and "as
+    // guessed by the AI" (country codes, spacing, dashes), so compare the
+    // trailing digits rather than requiring an exact string match.
+    function phonesRoughlyMatch(a, b) {
+        if (!a || !b) return false;
+        const tailLen = 7;
+        if (a.length < tailLen || b.length < tailLen) return a === b;
+        return a.slice(-tailLen) === b.slice(-tailLen);
+    }
+
+    // Returns 'matched' | 'found' | 'notfound' | null (null = nothing to show yet)
+    function computeContactStatus(lead) {
+        const v = lead.verification;
+        if (!v || v.status !== 'done') return null;
+        const result = v.result || {};
+        const pageEmails = (result.emailsFoundOnPage || []).map(normalizeEmail);
+        const pagePhones = (result.phonesFoundOnPage || []).map(normalizePhone);
+
+        const aiEmail = normalizeEmail(lead.contactEmail);
+        const aiPhone = normalizePhone(lead.phone);
+
+        const emailMatches = aiEmail && pageEmails.includes(aiEmail);
+        const phoneMatches = aiPhone && pagePhones.some(p => phonesRoughlyMatch(p, aiPhone));
+
+        if (emailMatches || phoneMatches) return 'matched';
+        if (pageEmails.length > 0 || pagePhones.length > 0) return 'found';
+        return 'notfound';
+    }
+
+    // Returns 'live' | 'dead' | 'blocked' | 'pending' | 'error' | null (null = not applicable, no website)
+    // 'blocked' = verifyLead detected a bot/firewall challenge (Cloudflare,
+    // WAF, rate-limiter, etc.) rather than a genuinely broken site.
+    function computeWebsiteStatus(lead) {
+        const v = lead.verification;
+        if (!v || v.status === 'idle') return null;
+        if (v.status === 'pending') return 'pending';
+        if (v.status === 'error') return 'error';
+        if (v.status === 'done') {
+            if (v.result && v.result.live) return 'live';
+            if (v.result && v.result.blocked) return 'blocked';
+            return 'dead';
+        }
+        return null;
+    }
+
+    function websiteBadgeHtml(lead) {
+        const status = computeWebsiteStatus(lead);
+        const map = {
+            pending: ['bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20', '⏳ Checking…'],
+            live:    ['bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20', '🟢 Website Live'],
+            blocked: ['bg-purple-500/10 text-purple-500 dark:text-purple-400 border-purple-500/20', '⚠️ Blocked/Shielded'],
+            dead:    ['bg-red-500/10 text-red-500 dark:text-red-400 border-red-500/20', '🔴 Site Dead'],
+            error:   ['bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20', '⚪ Check failed']
+        };
+        if (!status || !map[status]) return '';
+        const [cls, label] = map[status];
+        return `<span class="website-badge px-1.5 py-0.5 rounded border text-[9px] inline-block mt-1 ${cls}">${label}</span>`;
+    }
+
+    function contactBadgeHtml(lead) {
+        const status = computeContactStatus(lead);
+        const map = {
+            matched:  ['bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20', '✅ Matched'],
+            found:    ['bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20', '⚠️ Found on page'],
+            notfound: ['bg-red-500/10 text-red-500 dark:text-red-400 border-red-500/20', '❌ Not found']
+        };
+        const v = lead.verification;
+        if (v && v.status === 'pending') {
+            return `<span class="contact-badge px-1.5 py-0.5 rounded border text-[9px] inline-block mt-1 bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20">⏳ Checking…</span>`;
+        }
+        if (!status || !map[status]) return '';
+        const [cls, label] = map[status];
+        return `<span class="contact-badge px-1.5 py-0.5 rounded border text-[9px] inline-block mt-1 ${cls}">${label}</span>`;
+    }
+
+    // --- 3-Tier Lead Categorization (reads existing verification state only —
+    // does not touch how leads are fetched, generated, or verified) ---
+    //   Tier 1 (Hot):     live/blocked-but-real website AND both Email + Phone
+    //                      present, OR a single channel that the background
+    //                      check actually matched on the live page (the
+    //                      strongest signal).
+    //   Tier 2 (Good):     live/blocked-but-real website but only one of
+    //                      Email/Phone present (and not yet confirmed
+    //                      matched on-page).
+    //   Tier 3 (Partial):  website genuinely dead/unknown, OR neither Email
+    //                      nor Phone is available at all.
+    // A "blocked/shielded" site (bot-blocked by Cloudflare/WAF/etc.) is very
+    // likely still a real, live business site — it is treated the same as
+    // "live" here and never force-downgrades a lead to Tier 3 on its own.
+    // Missing secondary fields (LinkedIn, revenue, title variants, etc.)
+    // never affect the tier — only website status + primary contact channels do.
+    function hasUsableValue(val) {
+        return !!val && !['Unknown', 'Unavailable', 'None', 'None/Poor'].includes(val);
+    }
+
+    function computeLeadTier(lead) {
+        const websiteStatus = computeWebsiteStatus(lead);
+        const websiteOk = websiteStatus === 'live' || websiteStatus === 'blocked';
+        const emailPresent = hasUsableValue(lead.contactEmail);
+        const phonePresent = hasUsableValue(lead.phone);
+
+        if (!websiteOk) return 3;
+        if (!emailPresent && !phonePresent) return 3;
+        if (emailPresent && phonePresent) return 1;
+
+        // Exactly one primary channel present — Tier 1 if the background
+        // verification actually matched it on the live page, else Tier 2.
+        return computeContactStatus(lead) === 'matched' ? 1 : 2;
+    }
+
+    function tierGradeLabel(tier) {
+        return tier === 1 ? 'Tier 1 (Hot)' : tier === 2 ? 'Tier 2 (Good)' : 'Tier 3 (Partial)';
+    }
+
+    const TIER_BADGE_STYLE = {
+        1: ['bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20', '🟢 Tier 1 (Hot)'],
+        2: ['bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20', '🟡 Tier 2 (Good)'],
+        3: ['bg-orange-500/10 text-orange-500 dark:text-orange-400 border-orange-500/20', '🟠 Tier 3 (Partial)']
+    };
+
+    function tierBadgeHtml(lead) {
+        const [cls, label] = TIER_BADGE_STYLE[computeLeadTier(lead)];
+        return `<span class="tier-badge px-1.5 py-0.5 rounded border text-[9px] inline-block mt-0.5 ${cls}">${label}</span>`;
+    }
+
+    // Live counts shown above the table — recomputed whenever a lead's
+    // verification finishes, so tiers stay accurate as background checks land.
+    function renderTierSummary() {
+        const el = document.getElementById('tierSummary');
+        if (!el) return;
+        const counts = { 1: 0, 2: 0, 3: 0 };
+        (APP_STATE.leads || []).forEach(l => { counts[computeLeadTier(l)]++; });
+        el.innerHTML = `🟢 Tier 1: ${counts[1]} &nbsp;·&nbsp; 🟡 Tier 2: ${counts[2]} &nbsp;·&nbsp; 🟠 Tier 3: ${counts[3]}`;
+    }
+
+    // Patches badges for one row in place — no full table re-render, so
+    // sort order, scroll position, and other rows are untouched.
+    function updateLeadBadgesInDOM(leadId) {
+        const row = document.querySelector(`tr[data-lead-id="${CSS.escape(String(leadId))}"]`);
+        if (!row) return;
+        const lead = APP_STATE.leads.find(l => l.id === leadId);
+        if (!lead) return;
+
+        const websiteSlot = row.querySelector('.website-badge-slot');
+        if (websiteSlot) websiteSlot.innerHTML = websiteBadgeHtml(lead);
+
+        const contactSlot = row.querySelector('.contact-badge-slot');
+        if (contactSlot) contactSlot.innerHTML = contactBadgeHtml(lead);
+
+        const tierSlot = row.querySelector('.tier-badge-slot');
+        if (tierSlot) tierSlot.innerHTML = tierBadgeHtml(lead);
+
+        const mxSlot = row.querySelector('.mx-badge-slot');
+        if (mxSlot) mxSlot.innerHTML = mxBadgeHtml(lead);
+
+        renderTierSummary();
+        // Badges just changed (e.g. a background verification result landed),
+        // which can flip whether this row belongs under the "Only Show
+        // Verified Leads" filter — keep it in sync dynamically.
+        applyVerifiedFilter();
+    }
+
+    // --- Phase 3, Feature 1: Verified Filter Toggle ---
+    // A row is hidden when the toggle is ON and EITHER the website has been
+    // confirmed dead, OR the background check explicitly failed to find the
+    // AI-supplied email/phone on the live page. Reads only existing
+    // verification state (computeWebsiteStatus / computeContactStatus) —
+    // does not trigger any extra checks or change how verification runs.
+    // Leads still pending/idle/errored stay visible (nothing confirmed bad
+    // yet), so rows don't flicker out before their check has even finished.
+    function shouldHideRowForVerifiedFilter(lead) {
+        if (computeWebsiteStatus(lead) === 'dead') return true;
+        if (computeContactStatus(lead) === 'notfound') return true;
+        return false;
+    }
+
+    function toggleVerifiedFilter() {
+        const checkbox = document.getElementById('verifiedOnlyToggle');
+        APP_STATE.onlyShowVerified = !!(checkbox && checkbox.checked);
+        applyVerifiedFilter();
+    }
+
+    // Dynamically shows/hides existing <tr> elements in place — no table
+    // re-render, so scroll position and in-flight verification are untouched.
+    function applyVerifiedFilter() {
+        const tbody = document.getElementById('tableBody');
+        const countEl = document.getElementById('verifiedFilterCount');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr[data-lead-id]'));
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const lead = (APP_STATE.leads || []).find(l => String(l.id) === row.dataset.leadId);
+            if (!lead) return;
+            const hide = APP_STATE.onlyShowVerified && shouldHideRowForVerifiedFilter(lead);
+            row.style.display = hide ? 'none' : '';
+            if (!hide) visibleCount++;
+        });
+
+        let emptyRow = document.getElementById('verifiedFilterEmptyRow');
+        if (APP_STATE.onlyShowVerified && rows.length > 0 && visibleCount === 0) {
+            if (!emptyRow) {
+                emptyRow = document.createElement('tr');
+                emptyRow.id = 'verifiedFilterEmptyRow';
+                tbody.appendChild(emptyRow);
+            }
+            const columns = APP_STATE.activeColumns && APP_STATE.activeColumns.length ? APP_STATE.activeColumns : STANDARD_COLUMNS;
+            emptyRow.innerHTML = `<td colspan="${columns.length}" class="px-4 py-8 text-center text-slate-500 text-xs">No verified leads yet — results appear here as background checks finish, or turn the filter off to see everything.</td>`;
+        } else if (emptyRow) {
+            emptyRow.remove();
+        }
+
+        if (countEl) {
+            countEl.textContent = (APP_STATE.onlyShowVerified && rows.length > 0) ? `${visibleCount} of ${rows.length} shown` : '';
+        }
+    }
+
+    async function verifyOneLead(lead) {
+        lead.verification = { status: 'pending' };
+        updateLeadBadgesInDOM(lead.id);
+        try {
+            // NOTE: adjust this call if verifyLead.mts expects a different
+            // method/payload shape (e.g. GET /api/verifyLead?url=...).
+            const res = await fetch('/api/verifyLead', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: safeHref(lead.websiteUrl) })
+            });
+            if (!res.ok) throw new Error(`verifyLead responded ${res.status}`);
+            const result = await res.json();
+            lead.verification = { status: 'done', result };
+        } catch (e) {
+            console.warn('[verifyLead] failed for', lead.websiteUrl, e.message);
+            lead.verification = { status: 'error', error: e.message };
+        }
+        updateLeadBadgesInDOM(lead.id);
+    }
+
+    // Simple fixed-size worker pool so we verify several leads in parallel
+    // without firing 15-60 requests at once. Still used by the MX checker
+    // (Cloudflare DoH), which isn't subject to Netlify's function limits.
+    const VERIFY_CONCURRENCY = 4;
+    async function runWithConcurrency(items, limit, worker) {
+        const queue = items.slice();
+        const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+            while (queue.length) {
+                const item = queue.shift();
+                await worker(item);
+            }
+        });
+        await Promise.all(workers);
+    }
+
+    // --- Phase 3, Feature 2: Batch Processing & Rate-Limiting Optimization ---
+    // Unlike runWithConcurrency's always-saturated pool (a finished slot is
+    // refilled immediately), this fires a fixed-size batch, waits for the
+    // WHOLE batch to settle, then pauses briefly before starting the next
+    // one. That short gap between batches is what actually protects
+    // /api/verifyLead (and Netlify's function concurrency/rate limits) from
+    // bursts on large lead lists — plain concurrency-limiting alone doesn't
+    // add any pacing between waves of requests.
+    // Non-blocking by construction: batches are awaited via setTimeout/
+    // Promise (never a synchronous sleep), so the main thread — and table
+    // rendering/scrolling/typing — is never frozen while this runs. Each
+    // lead's badges update the moment ITS request finishes (inside
+    // verifyOneLead), not only when the whole batch completes.
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function runInBatches(items, batchSize, delayMs, worker) {
+        const queue = items.slice();
+        while (queue.length) {
+            const batch = queue.splice(0, batchSize);
+            await Promise.all(batch.map(item => worker(item)));
+            if (queue.length) await delay(delayMs);
+        }
+    }
+
+    const VERIFY_BATCH_SIZE = 4;      // concurrent /api/verifyLead requests per wave
+    const VERIFY_BATCH_DELAY_MS = 400; // pause between waves so we never hammer Netlify
+
+    // Called right after a results render. Only verifies leads with a
+    // usable website URL — everything else keeps no badge, same as today.
+    function kickOffBackgroundVerification() {
+        const toVerify = (APP_STATE.leads || []).filter(l => safeHref(l.websiteUrl));
+        if (toVerify.length === 0) return;
+        runInBatches(toVerify, VERIFY_BATCH_SIZE, VERIFY_BATCH_DELAY_MS, verifyOneLead);
+    }
+
+    // Renders one "Platform: url | Platform: url"-style field as clickable
+    // links (only when the lead is OSM-verified) or plain unverified text.
+    // Shared by the socialLinks and linkedinProfile columns.
+    function renderLinkListCell(rawVal, isVerified, linkClass) {
+        const val = rawVal || '';
+        if (!val || ['Unavailable', 'Unknown', 'None', 'None/Poor'].includes(val)) {
+            return '<span class="text-[10px] text-slate-500">Unavailable</span>';
+        }
+        const parts = val.split('|').map(p => p.trim()).filter(Boolean);
+        return parts.map(part => {
+            const match = part.match(/(.*?):\s*(http[^\s]+)/);
+            const href = match ? safeHref(match[2]) : safeHref(part);
+            const label = match ? match[1].trim() : part;
+            if (href && isVerified) {
+                return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="${linkClass} transition-colors truncate block max-w-[150px] text-[10px]">${escapeHtml(match ? label : href)}</a>`;
+            }
+            return `<span class="text-[10px] text-slate-500 block truncate max-w-[150px]" title="Unverified">${escapeHtml(label)} ${!isVerified ? '<span class="text-amber-500">(unverified)</span>' : ''}</span>`;
+        }).join('');
+    }
+
+    // Renders one <td> for a given lead + column. Known standard columns get
+    // bespoke treatment (links, mailto, verification badges); unknown/custom
+    // columns (from extra:) fall back to plain escaped text.
+    function renderTableCell(lead, col, isVerified) {
+        switch (col.key) {
+            case 'businessName': {
+                const business = escapeHtml(lead.businessName || '-');
+                const sourceBadge = isVerified
+                    ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 dark:text-green-400 border border-green-500/20 inline-block mt-0.5">✓ Real business (OSM)</span>'
+                    : '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20 inline-block mt-0.5">⚠ AI-estimated</span>';
+                return `<td class="p-4 text-slate-900 dark:text-white font-medium max-w-[200px]" title="${business}">
+                            <div class="truncate">${business}</div>
+                            ${sourceBadge}
+                            <div class="tier-badge-slot">${tierBadgeHtml(lead)}</div>
+                        </td>`;
+            }
+            case 'ownerCeo':
+                return `<td class="p-4 text-slate-700 dark:text-slate-300 max-w-[120px] truncate" title="${escapeHtml(lead.ownerCeo || 'Unknown')}">${escapeHtml(lead.ownerCeo || 'Unknown')}</td>`;
+            case 'niche':
+                return `<td class="p-4 text-slate-600 dark:text-slate-400 max-w-[120px] truncate">${escapeHtml(lead.niche || '-')}</td>`;
+            case 'contactEmail': {
+                const email = escapeHtml(lead.contactEmail || '');
+                const hasEmail = lead.contactEmail && !['Unknown', 'Unavailable', 'None'].includes(lead.contactEmail);
+                return `<td class="p-4">
+                            <div class="flex flex-col gap-1">
+                                ${hasEmail ? `<a href="mailto:${email}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline transition-colors truncate max-w-[150px] inline-block" title="${email}">${email}</a>` : '<span class="text-slate-400 dark:text-slate-500 text-xs">-</span>'}
+                                <div class="contact-badge-slot">${contactBadgeHtml(lead)}</div>
+                                <div class="mx-badge-slot">${mxBadgeHtml(lead)}</div>
+                            </div>
+                        </td>`;
+            }
+            case 'phone': {
+                const phone = escapeHtml(lead.phone || '');
+                const hasPhone = lead.phone && !['Unknown', 'Unavailable', 'None'].includes(lead.phone);
+                // Contact-match badge already lives on the email cell when both
+                // are present; only duplicate it here if email isn't a column.
+                const showBadgeHere = !APP_STATE.activeColumns.find(c => c.key === 'contactEmail');
+                return `<td class="p-4">
+                            <div class="flex flex-col gap-1">
+                                ${hasPhone ? `<span class="text-[10px] text-slate-500 font-mono">${phone}</span>` : '<span class="text-slate-400 dark:text-slate-500 text-xs">-</span>'}
+                                ${showBadgeHere ? `<div class="contact-badge-slot">${contactBadgeHtml(lead)}</div>` : ''}
+                                <div class="phone-format-badge-slot">${phoneFormatBadgeHtml(lead)}</div>
+                            </div>
+                        </td>`;
+            }
+            case 'websiteUrl': {
+                const websiteHref = lead.websiteUrl && lead.websiteUrl !== 'Unavailable' ? safeHref(lead.websiteUrl) : null;
+                let websiteHtml;
+                if (!websiteHref) {
+                    websiteHtml = '<span class="px-2 py-0.5 rounded bg-red-500/10 text-red-500 dark:text-red-400 text-[10px] border border-red-500/20">Unavailable</span>';
+                } else if (isVerified) {
+                    websiteHtml = `<a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-500 dark:hover:text-blue-400 text-slate-600 dark:text-slate-300 transition-colors truncate max-w-[150px] inline-block text-xs">${escapeHtml(lead.websiteUrl)}</a>`;
+                } else {
+                    websiteHtml = `<span class="text-xs text-slate-500 truncate max-w-[150px] inline-block" title="Unverified guess — confirm before using">${escapeHtml(lead.websiteUrl)} <span class="text-amber-500">(unverified)</span></span>`;
+                }
+                return `<td class="p-4">
+                            <div class="flex flex-col gap-1.5 items-start">
+                                ${websiteHtml}
+                                <div class="website-badge-slot">${websiteBadgeHtml(lead)}</div>
+                            </div>
+                        </td>`;
+            }
+            case 'linkedinProfile':
+                return `<td class="p-4 max-w-[180px]"><div class="flex flex-col gap-1 items-start leading-tight">${renderLinkListCell(lead.linkedinProfile, isVerified, 'text-blue-500 hover:text-blue-400 dark:text-blue-400 dark:hover:text-blue-300')}</div></td>`;
+            case 'socialLinks':
+                return `<td class="p-4 max-w-[250px]"><div class="flex flex-col gap-1 items-start leading-tight">${renderLinkListCell(lead.socialLinks, isVerified, 'text-orange-500 hover:text-orange-400 dark:text-orange-400 dark:hover:text-orange-300')}</div></td>`;
+            case 'dataSource': {
+                const label = isVerified ? 'Verified (OpenStreetMap)' : 'AI-Estimated (unverified)';
+                const cls = isVerified
+                    ? 'bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20'
+                    : 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20';
+                return `<td class="p-4"><span class="text-[10px] px-1.5 py-0.5 rounded border inline-block ${cls}">${label}</span></td>`;
+            }
+            case 'address':
+                return `<td class="p-4 text-slate-600 dark:text-slate-400 max-w-[180px] truncate" title="${escapeHtml(lead.address || '')}">${escapeHtml(lead.address || '-')}</td>`;
+            default: {
+                // Custom column requested via extra:/specific: — plain text.
+                const val = lead[col.key];
+                return `<td class="p-4 text-slate-600 dark:text-slate-400 max-w-[160px] truncate" title="${escapeHtml(val || '')}">${escapeHtml(val || '-')}</td>`;
+            }
+        }
+    }
+
+    function renderTable() {
+        const headRow = document.getElementById('tableHeadRow');
+        const tbody = document.getElementById('tableBody');
+        const columns = APP_STATE.activeColumns && APP_STATE.activeColumns.length ? APP_STATE.activeColumns : STANDARD_COLUMNS;
+
+        headRow.innerHTML = columns.map(c => `<th class="p-4 font-medium border-b border-slate-200 dark:border-white/5">${escapeHtml(c.label)}</th>`).join('');
+        tbody.innerHTML = '';
+
+        if (!APP_STATE.leads || APP_STATE.leads.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${columns.length}" class="px-4 py-8 text-center text-slate-500">No leads found. Try a different prompt.</td></tr>`;
+            renderTierSummary();
+            const countEl = document.getElementById('verifiedFilterCount');
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
+        ensureLeadVerificationState(APP_STATE.leads);
+        ensureLeadMxState(APP_STATE.leads);
+
+        APP_STATE.leads.forEach(lead => {
+            const tr = document.createElement('tr');
+            tr.dataset.leadId = lead.id;
+            tr.className = "hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors";
+            const isVerified = lead.source === 'osm';
+            tr.innerHTML = columns.map(col => renderTableCell(lead, col, isVerified)).join('');
+            tbody.appendChild(tr);
+        });
+
+        renderTierSummary();
+        // Re-sync the toggle's checked state (it lives outside the table, so
+        // it survives a re-render) then apply hide/show to the fresh rows.
+        const verifiedToggle = document.getElementById('verifiedOnlyToggle');
+        if (verifiedToggle) verifiedToggle.checked = APP_STATE.onlyShowVerified;
+        applyVerifiedFilter();
+        lucide.createIcons();
+    }
+
+    // --- Export & Save ---
+    // Every exporter reads APP_STATE.activeColumns so headers/rows always
+    // match whatever columns this search actually produced (fixed 10-col
+    // default, or a specific:/extra: override) — pitchHook is gone entirely.
+    function exportColumns() {
+        return APP_STATE.activeColumns && APP_STATE.activeColumns.length ? APP_STATE.activeColumns : STANDARD_COLUMNS;
+    }
+
+    function leadColumnValue(lead, col) {
+        if (col.key === '__leadGrade') return tierGradeLabel(computeLeadTier(lead));
+        if (col.key === 'dataSource') {
+            return lead.source === 'osm' ? 'Verified (OpenStreetMap)' : 'AI-Estimated (unverified)';
+        }
+        const val = lead[col.key];
+        return val === null || val === undefined ? '' : String(val);
+    }
+
+    // Reads the tier filter picked in the export dropdown ('all' | '1' | '2' | '3').
+    function getSelectedExportTier() {
+        const el = document.getElementById('exportTierSelect');
+        return el ? el.value : 'all';
+    }
+
+    // Returns the leads for the chosen tier. For "all", rows are sorted
+    // Tier 1 -> Tier 2 -> Tier 3 (stable within each tier); for a single
+    // tier, only matching leads are returned, in their original order.
+    function getLeadsForExport(tierFilter) {
+        const leads = APP_STATE.leads || [];
+        if (tierFilter === 'all') {
+            return leads
+                .map((lead, index) => ({ lead, index, tier: computeLeadTier(lead) }))
+                .sort((a, b) => (a.tier - b.tier) || (a.index - b.index))
+                .map(entry => entry.lead);
+        }
+        const tierNum = parseInt(tierFilter, 10);
+        return leads.filter(lead => computeLeadTier(lead) === tierNum);
+    }
+
+    // Combined exports get an extra Lead_Grade column; single-tier exports
+    // don't need it since every row is already the same grade.
+    function getExportColumnsForTier(tierFilter) {
+        const columns = exportColumns();
+        if (tierFilter === 'all') {
+            return [...columns, { key: '__leadGrade', label: 'Lead_Grade' }];
+        }
+        return columns;
+    }
+
+    function exportFileBaseName(tierFilter) {
+        if (tierFilter === 'all') return 'reshalat_leads_all_combined';
+        return `reshalat_leads_tier${tierFilter}`;
+    }
+
+    function exportCSV() {
+        if (!APP_STATE.leads || APP_STATE.leads.length === 0) return;
+
+        const tierFilter = getSelectedExportTier();
+        const leads = getLeadsForExport(tierFilter);
+        if (leads.length === 0) { alert('No leads in this tier yet — try "All Combined" or wait for verification to finish.'); return; }
+
+        const columns = getExportColumnsForTier(tierFilter);
+        const headers = columns.map(c => c.label);
+        const rows = leads.map(l => columns.map(c => `"${leadColumnValue(l, c).replace(/"/g, '""')}"`));
+
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${exportFileBaseName(tierFilter)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function leadsToRowObjects(leads, columns) {
+        return leads.map(l => {
+            const row = {};
+            columns.forEach(c => { row[c.label] = leadColumnValue(l, c); });
+            return row;
+        });
+    }
+
+    function exportXLSX() {
+        if (!APP_STATE.leads || APP_STATE.leads.length === 0) return;
+        try {
+            const tierFilter = getSelectedExportTier();
+            const leads = getLeadsForExport(tierFilter);
+            if (leads.length === 0) { alert('No leads in this tier yet — try "All Combined" or wait for verification to finish.'); return; }
+
+            const columns = getExportColumnsForTier(tierFilter);
+            const ws = XLSX.utils.json_to_sheet(leadsToRowObjects(leads, columns));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+            XLSX.writeFile(wb, `${exportFileBaseName(tierFilter)}.xlsx`);
+        } catch (e) {
+            console.error('XLSX export failed:', e);
+            alert('Excel export failed to load. Try CSV instead, or check your connection.');
+        }
+    }
+
+    function exportPDF() {
+        if (!APP_STATE.leads || APP_STATE.leads.length === 0) return;
+        try {
+            const tierFilter = getSelectedExportTier();
+            const leads = getLeadsForExport(tierFilter);
+            if (leads.length === 0) { alert('No leads in this tier yet — try "All Combined" or wait for verification to finish.'); return; }
+
+            const columns = getExportColumnsForTier(tierFilter);
+            const titleSuffix = tierFilter === 'all' ? 'All Combined' : `Tier ${tierFilter}`;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape' });
+            doc.setFontSize(14);
+            doc.text(`Reshalat Lead Finder — Export (${titleSuffix})`, 14, 15);
+            doc.autoTable({
+                startY: 20,
+                head: [columns.map(c => c.label)],
+                body: leads.map(l => columns.map(c => leadColumnValue(l, c))),
+                styles: { fontSize: 7 }
+            });
+            doc.save(`${exportFileBaseName(tierFilter)}.pdf`);
+        } catch (e) {
+            console.error('PDF export failed:', e);
+            alert('PDF export failed to load. Try CSV instead, or check your connection.');
+        }
+    }
+
+    // --- Saved Lists (real localStorage persistence) ---
+    const MAX_SAVED_SEARCHES = 50;
+
+    function persistSavedSearches() {
+        // Keep only the most recent MAX_SAVED_SEARCHES to avoid unbounded growth.
+        APP_STATE.savedSearches = APP_STATE.savedSearches.slice(0, MAX_SAVED_SEARCHES);
+        try {
+            localStorage.setItem('savedSearches', JSON.stringify(APP_STATE.savedSearches));
+        } catch (e) {
+            console.warn('Could not persist saved searches (storage may be full):', e.message);
+        }
+    }
+
+    // Called automatically after every successful search.
+    function autoSaveSearch(prompt, leads, columns) {
+        const entry = {
+            id: Date.now(),
+            name: (prompt || 'Untitled search').slice(0, 60),
+            timestamp: Date.now(),
+            prompt: prompt || '',
+            leads: leads,
+            columns: columns || STANDARD_COLUMNS.slice()
+        };
+        APP_STATE.savedSearches.unshift(entry);
+        persistSavedSearches();
+    }
+
+    function openSavedLists() {
+        document.getElementById('savedListsSearch').value = '';
+        renderSavedLists();
+        toggleModal('savedListsModal');
+    }
+
+    function renderSavedLists() {
+        const container = document.getElementById('savedListsBody');
+        const filter = (document.getElementById('savedListsSearch').value || '').toLowerCase();
+        const items = APP_STATE.savedSearches.filter(s => s.name.toLowerCase().includes(filter));
+
+        if (items.length === 0) {
+            container.innerHTML = '<p class="text-sm text-slate-500 text-center py-8">No saved searches yet. Run a search and it will appear here automatically.</p>';
+            return;
+        }
+
+        container.innerHTML = items.map(s => `
+            <div class="p-3 rounded-lg border border-slate-200 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">${escapeHtml(s.name)}</p>
+                        <p class="text-[10px] text-slate-500">${new Date(s.timestamp).toLocaleString()} · ${s.leads.length} leads</p>
+                    </div>
+                    <div class="flex gap-1 shrink-0">
+                        <button onclick="loadSavedSearch(${s.id})" class="p-1.5 rounded-lg hover:bg-blue-500/10 text-blue-500" title="Load"><i data-lucide="folder-open" class="h-4 w-4"></i></button>
+                        <button onclick="renameSearch(${s.id})" class="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500" title="Rename"><i data-lucide="pencil" class="h-4 w-4"></i></button>
+                        <button onclick="deleteSavedSearch(${s.id})" class="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500" title="Delete"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        lucide.createIcons();
+    }
+
+    function loadSavedSearch(id) {
+        const entry = APP_STATE.savedSearches.find(s => s.id === id);
+        if (!entry) return;
+        APP_STATE.leads = entry.leads;
+        // Older saved searches predate the dynamic-column system — fall back
+        // to the standard 10 so rendering/export never crashes on them.
+        APP_STATE.activeColumns = (entry.columns && entry.columns.length) ? entry.columns : STANDARD_COLUMNS.slice();
+        renderTable();
+        kickOffBackgroundVerification();
+        kickOffMxChecks();
+        document.getElementById('resultsSection').classList.remove('hidden');
+        toggleModal('savedListsModal');
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renameSearch(id) {
+        const entry = APP_STATE.savedSearches.find(s => s.id === id);
+        if (!entry) return;
+        const newName = prompt('Rename this search (e.g. a client name):', entry.name);
+        if (newName && newName.trim()) {
+            entry.name = newName.trim().slice(0, 60);
+            persistSavedSearches();
+            renderSavedLists();
+        }
+    }
+
+    function deleteSavedSearch(id) {
+        if (!confirm('Delete this saved search? This cannot be undone.')) return;
+        APP_STATE.savedSearches = APP_STATE.savedSearches.filter(s => s.id !== id);
+        persistSavedSearches();
+        renderSavedLists();
+    }
+
+    // "Name this search" button in the results panel — renames the most
+    // recent auto-saved entry (the one just generated) right away.
+    function renameLatestSearch() {
+        if (APP_STATE.savedSearches.length === 0) return;
+        renameSearch(APP_STATE.savedSearches[0].id);
+    }
+</script>
+
+</body>
+</html>
